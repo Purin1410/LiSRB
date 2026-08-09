@@ -40,6 +40,17 @@ model:
   dc: 32
   cross_coverage: true
   self_coverage: true
+  # -------- LiSRB: tree-structure relative bias (L2R-only) --------
+  # Applied only to the self-attention of the L2R half of the bidirectional
+  # batch; the R2L half is always unbiased by construction (see
+  # models/decoder.py::Decoder._build_rel_bias_for_tgt). There is no
+  # use_bidirectional toggle here: CoMER's bidirectional decoding is always
+  # on, this only controls whether the L2R half gets the extra bias term.
+  use_tree_bias: true
+  tree_bias_num_buckets: 16
+  tree_bias_mode: full        # dist_only | type_only | full
+  tree_bias_layers: all       # all | last1
+  tree_bias_rel_set: core     # script | fraction | core
   # -------- beam search --------
   beam_size: 10
   max_len: 200

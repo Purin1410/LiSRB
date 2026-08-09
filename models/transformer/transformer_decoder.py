@@ -21,12 +21,14 @@ class TransformerDecoder(nn.Module):
         num_layers: int,
         arm: Optional[AttentionRefinementModule],
         norm=None,
+        tree_bias_layers: str = "all",
     ):
         super(TransformerDecoder, self).__init__()
         self.layers = _get_clones(decoder_layer, num_layers)
         self.num_layers = num_layers
         self.norm = norm
         self.arm = arm
+        self.tree_bias_layers = tree_bias_layers
 
     def forward(
         self,
@@ -39,6 +41,7 @@ class TransformerDecoder(nn.Module):
         memory_key_padding_mask: Optional[Tensor] = None,
         return_attn_maps: bool = False,
         return_self_attn_maps: bool = False,
+        rel_bias: Optional[Tensor] = None,
     ):
         output = tgt
         attn_maps = [] if return_attn_maps else None
@@ -46,6 +49,10 @@ class TransformerDecoder(nn.Module):
 
         arm = None
         for i, mod in enumerate(self.layers):
+            layer_rel_bias = rel_bias
+            if self.tree_bias_layers == "last1" and i != self.num_layers - 1:
+                layer_rel_bias = None
+
             output, attn, self_attn = mod(
                 output,
                 memory,
@@ -55,6 +62,7 @@ class TransformerDecoder(nn.Module):
                 tgt_key_padding_mask=tgt_key_padding_mask,
                 memory_key_padding_mask=memory_key_padding_mask,
                 return_self_attn=return_self_attn_maps,
+                rel_bias=layer_rel_bias,
             )
             if return_attn_maps:
                 attn_maps.append(attn.detach())
@@ -112,6 +120,7 @@ class TransformerDecoderLayer(nn.Module):
         tgt_key_padding_mask: Optional[Tensor] = None,
         memory_key_padding_mask: Optional[Tensor] = None,
         return_self_attn: bool = False,
+        rel_bias: Optional[Tensor] = None,
     ) -> Tensor:
         r"""Pass the inputs (and mask) through the decoder layer.
 
@@ -122,6 +131,8 @@ class TransformerDecoderLayer(nn.Module):
             memory_mask: the mask for the memory sequence (optional).
             tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
             memory_key_padding_mask: the mask for the memory keys per batch (optional).
+            rel_bias: additive bias for self-attention scores only (optional).
+                Cross-attention never receives it.
 
         Shape:
             see the docs in Transformer class.
@@ -131,6 +142,7 @@ class TransformerDecoderLayer(nn.Module):
             attn_mask=tgt_mask,
             key_padding_mask=tgt_key_padding_mask,
             need_weights=return_self_attn,
+            rel_bias=rel_bias,
         )
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)

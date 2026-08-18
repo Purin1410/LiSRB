@@ -22,6 +22,9 @@ trainer:
   val_check_interval: 1.0
   default_root_dir: "checkpoints"
   log_grad_norm: false
+  # AMP: T4 (Kaggle) has full fp16 Tensor Core support. Watch train/val loss for
+  # NaN/drift on the first few epochs before trusting a full run.
+  precision: 16
 
 model:
   d_model: 256
@@ -53,6 +56,10 @@ model:
   tree_bias_rel_set: core     # script | fraction | core
   # -------- beam search --------
   beam_size: 10
+  # Cheaper beam search used only during periodic validation (val_ExpRate is
+  # just a checkpoint-selection/monitoring signal, not the reported metric).
+  # test_step always uses beam_size above, so final numbers are unaffected.
+  val_beam_size: 2
   max_len: 200
   alpha: 1.0
   early_stopping: false

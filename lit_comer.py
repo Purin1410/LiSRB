@@ -23,6 +23,7 @@ class LitCoMER(pl.LightningModule):
         alpha: float = 1.0,
         early_stopping: bool = True,
         temperature: float = 1.0,
+        val_beam_size: Optional[int] = None,
         vocab_info: VocabInfo = None,
     ):
         super().__init__()
@@ -129,7 +130,10 @@ class LitCoMER(pl.LightningModule):
         topk_enabled = should_log_topk(cfg, "val", trainer=self._analysis_trainer_or_none())
 
         beam_results = self.approximate_joint_search(
-            batch.imgs, batch.mask, return_nbest=topk_enabled
+            batch.imgs,
+            batch.mask,
+            return_nbest=topk_enabled,
+            beam_size=self.hparams.get("val_beam_size", None),
         )
 
         if topk_enabled and beam_results and hasattr(beam_results[0], 'candidates'):
@@ -830,13 +834,17 @@ class LitCoMER(pl.LightningModule):
         self._loaded_plateau_scheduler_state = state.get("plateau_scheduler", None)
 
     def approximate_joint_search(
-        self, 
-        img: FloatTensor, 
+        self,
+        img: FloatTensor,
         mask: LongTensor,
         return_nbest: bool = False,
+        beam_size: Optional[int] = None,
     ):
+        hparams = dict(self.hparams)
+        if beam_size is not None:
+            hparams["beam_size"] = beam_size
         return self.comer_model.beam_search(
-            img, mask, **self.hparams, return_nbest=return_nbest
+            img, mask, **hparams, return_nbest=return_nbest
         )
 
     def configure_optimizers(self):

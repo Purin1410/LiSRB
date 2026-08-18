@@ -361,6 +361,7 @@ def train(config):
         alpha=config.model.alpha,
         early_stopping=config.model.early_stopping,
         temperature=config.model.temperature,
+        val_beam_size=config.model.get("val_beam_size", None),
         vocab_info=data_module.vocab.get_info(),
     )
 
@@ -415,6 +416,7 @@ def train(config):
         max_epochs              = config.trainer.max_epochs,
         logger                  = logger,
         deterministic           = config.trainer.deterministic,
+        precision               = config.trainer.get("precision", 32),
         callbacks               = callback,
         # default_root_dir        = config.trainer.default_root_dir,
         resume_from_checkpoint  = config.trainer.resume_from_checkpoint,
